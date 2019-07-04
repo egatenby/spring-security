@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -42,9 +43,11 @@ import org.springframework.core.annotation.AnnotationAwareOrderComparator;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.DelegatingReactiveAuthenticationManager;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.ReactiveAuthenticationManagerResolver;
 import org.springframework.security.authorization.AuthenticatedReactiveAuthorizationManager;
 import org.springframework.security.authorization.AuthorityReactiveAuthorizationManager;
 import org.springframework.security.authorization.AuthorizationDecision;
@@ -53,11 +56,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.context.ReactiveSecurityContextHolder;
+import org.springframework.security.core.userdetails.ReactiveUserDetailsService;
 import org.springframework.security.oauth2.client.InMemoryReactiveOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.ReactiveOAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthorizationCodeReactiveAuthenticationManager;
 import org.springframework.security.oauth2.client.authentication.OAuth2LoginReactiveAuthenticationManager;
+import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
+import org.springframework.security.oauth2.client.endpoint.ReactiveOAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.WebClientReactiveAuthorizationCodeTokenResponseClient;
 import org.springframework.security.oauth2.client.oidc.authentication.OidcAuthorizationCodeReactiveAuthenticationManager;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcReactiveOAuth2UserService;
@@ -85,10 +90,14 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 import org.springframework.security.oauth2.server.resource.authentication.JwtReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.authentication.OAuth2IntrospectionReactiveAuthenticationManager;
 import org.springframework.security.oauth2.server.resource.authentication.ReactiveJwtAuthenticationConverterAdapter;
+import org.springframework.security.oauth2.server.resource.introspection.NimbusReactiveOAuth2TokenIntrospectionClient;
+import org.springframework.security.oauth2.server.resource.introspection.ReactiveOAuth2TokenIntrospectionClient;
 import org.springframework.security.oauth2.server.resource.web.access.server.BearerTokenServerAccessDeniedHandler;
 import org.springframework.security.oauth2.server.resource.web.server.BearerTokenServerAuthenticationEntryPoint;
 import org.springframework.security.oauth2.server.resource.web.server.ServerBearerTokenAuthenticationConverter;
 import org.springframework.security.web.PortMapper;
+import org.springframework.security.web.authentication.preauth.x509.SubjectDnX509PrincipalExtractor;
+import org.springframework.security.web.authentication.preauth.x509.X509PrincipalExtractor;
 import org.springframework.security.web.server.DelegatingServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.MatcherSecurityWebFilterChain;
 import org.springframework.security.web.server.SecurityWebFilterChain;
@@ -97,6 +106,7 @@ import org.springframework.security.web.server.WebFilterExchange;
 import org.springframework.security.web.server.authentication.AnonymousAuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.AuthenticationWebFilter;
 import org.springframework.security.web.server.authentication.HttpBasicServerAuthenticationEntryPoint;
+import org.springframework.security.web.server.authentication.ReactivePreAuthenticatedAuthenticationManager;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationEntryPoint;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationFailureHandler;
 import org.springframework.security.web.server.authentication.RedirectServerAuthenticationSuccessHandler;
@@ -106,6 +116,7 @@ import org.springframework.security.web.server.authentication.ServerAuthenticati
 import org.springframework.security.web.server.authentication.ServerAuthenticationSuccessHandler;
 import org.springframework.security.web.server.authentication.ServerFormLoginAuthenticationConverter;
 import org.springframework.security.web.server.authentication.ServerHttpBasicAuthenticationConverter;
+import org.springframework.security.web.server.authentication.ServerX509AuthenticationConverter;
 import org.springframework.security.web.server.authentication.logout.DelegatingServerLogoutHandler;
 import org.springframework.security.web.server.authentication.logout.LogoutWebFilter;
 import org.springframework.security.web.server.authentication.logout.SecurityContextServerLogoutHandler;
@@ -220,6 +231,7 @@ import static org.springframework.security.web.server.util.matcher.ServerWebExch
  *
  * @author Rob Winch
  * @author Vedran Pavic
+ * @author Rafiullah Hamedy
  * @since 5.0
  */
 public class ServerHttpSecurity {
@@ -238,6 +250,8 @@ public class ServerHttpSecurity {
 	private ExceptionHandlingSpec exceptionHandling = new ExceptionHandlingSpec();
 
 	private HttpBasicSpec httpBasic;
+
+	private X509Spec x509;
 
 	private final RequestCacheSpec requestCache = new RequestCacheSpec();
 
@@ -576,6 +590,93 @@ public class ServerHttpSecurity {
 		return this.formLogin;
 	}
 
+	/**
+	 * Configures x509 authentication using a certificate provided by a client.
+	 *
+	 * <pre class="code">
+	 *  &#064;Bean
+	 *  public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http) {
+	 *      http
+	 *          .x509()
+	 *          	.authenticationManager(authenticationManager)
+	 *              .principalExtractor(principalExtractor);
+	 *      return http.build();
+	 *  }
+	 * </pre>
+	 *
+	 * Note that if extractor is not specified, {@link SubjectDnX509PrincipalExtractor} will be used.
+	 * If authenticationManager is not specified, {@link ReactivePreAuthenticatedAuthenticationManager} will be used.
+	 *
+	 * @return the {@link X509Spec} to customize
+	 * @author Alexey Nesterov
+	 * @since 5.2
+	 */
+	public X509Spec x509() {
+		if (this.x509 == null) {
+			this.x509 = new X509Spec();
+		}
+
+		return this.x509;
+	}
+
+	/**
+	 * Configures X509 authentication
+	 *
+	 * @author Alexey Nesterov
+	 * @since 5.2
+	 * @see #x509()
+	 */
+	public class X509Spec {
+
+		private X509PrincipalExtractor principalExtractor;
+		private ReactiveAuthenticationManager authenticationManager;
+
+		public X509Spec principalExtractor(X509PrincipalExtractor principalExtractor) {
+			this.principalExtractor = principalExtractor;
+			return this;
+		}
+
+		public X509Spec authenticationManager(ReactiveAuthenticationManager authenticationManager) {
+			this.authenticationManager = authenticationManager;
+			return this;
+		}
+
+		public ServerHttpSecurity and() {
+			return ServerHttpSecurity.this;
+		}
+
+		protected void configure(ServerHttpSecurity http) {
+			ReactiveAuthenticationManager authenticationManager = getAuthenticationManager();
+			X509PrincipalExtractor principalExtractor = getPrincipalExtractor();
+
+			AuthenticationWebFilter filter = new AuthenticationWebFilter(authenticationManager);
+			filter.setServerAuthenticationConverter(new ServerX509AuthenticationConverter(principalExtractor));
+			http.addFilterAt(filter, SecurityWebFiltersOrder.AUTHENTICATION);
+		}
+
+		private X509PrincipalExtractor getPrincipalExtractor() {
+			if (this.principalExtractor != null) {
+				return this.principalExtractor;
+			}
+
+			return new SubjectDnX509PrincipalExtractor();
+		}
+
+		private ReactiveAuthenticationManager getAuthenticationManager() {
+			if (this.authenticationManager != null) {
+				return this.authenticationManager;
+			}
+
+			ReactiveUserDetailsService userDetailsService = getBean(ReactiveUserDetailsService.class);
+			ReactivePreAuthenticatedAuthenticationManager authenticationManager = new ReactivePreAuthenticatedAuthenticationManager(userDetailsService);
+
+			return authenticationManager;
+		}
+
+		private X509Spec() {
+		}
+	}
+
 	public OAuth2LoginSpec oauth2Login() {
 		if (this.oauth2Login == null) {
 			this.oauth2Login = new OAuth2LoginSpec();
@@ -596,6 +697,8 @@ public class ServerHttpSecurity {
 
 		private ServerWebExchangeMatcher authenticationMatcher;
 
+		private ServerAuthenticationSuccessHandler authenticationSuccessHandler = new RedirectServerAuthenticationSuccessHandler();
+
 		/**
 		 * Configures the {@link ReactiveAuthenticationManager} to use. The default is
 		 * {@link OAuth2AuthorizationCodeReactiveAuthenticationManager}
@@ -604,6 +707,20 @@ public class ServerHttpSecurity {
 		 */
 		public OAuth2LoginSpec authenticationManager(ReactiveAuthenticationManager authenticationManager) {
 			this.authenticationManager = authenticationManager;
+			return this;
+		}
+
+		/**
+		 * The {@link ServerAuthenticationSuccessHandler} used after authentication success. Defaults to
+		 * {@link RedirectServerAuthenticationSuccessHandler} redirecting to "/".
+		 *
+		 * @since 5.2
+		 * @param authenticationSuccessHandler the success handler to use
+		 * @return the {@link OAuth2LoginSpec} to customize
+		 */
+		public OAuth2LoginSpec authenticationSuccessHandler(ServerAuthenticationSuccessHandler authenticationSuccessHandler) {
+			Assert.notNull(authenticationSuccessHandler, "authenticationSuccessHandler cannot be null");
+			this.authenticationSuccessHandler = authenticationSuccessHandler;
 			return this;
 		}
 
@@ -621,7 +738,7 @@ public class ServerHttpSecurity {
 		}
 
 		private ReactiveAuthenticationManager createDefault() {
-			WebClientReactiveAuthorizationCodeTokenResponseClient client = new WebClientReactiveAuthorizationCodeTokenResponseClient();
+			ReactiveOAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> client = getAccessTokenResponseClient();
 			ReactiveAuthenticationManager result = new OAuth2LoginReactiveAuthenticationManager(client, getOauth2UserService());
 
 			boolean oidcAuthenticationProviderEnabled = ClassUtils.isPresent(
@@ -722,9 +839,8 @@ public class ServerHttpSecurity {
 			AuthenticationWebFilter authenticationFilter = new OAuth2LoginAuthenticationWebFilter(manager, authorizedClientRepository);
 			authenticationFilter.setRequiresAuthenticationMatcher(getAuthenticationMatcher());
 			authenticationFilter.setServerAuthenticationConverter(getAuthenticationConverter(clientRegistrationRepository));
-			RedirectServerAuthenticationSuccessHandler redirectHandler = new RedirectServerAuthenticationSuccessHandler();
 
-			authenticationFilter.setAuthenticationSuccessHandler(redirectHandler);
+			authenticationFilter.setAuthenticationSuccessHandler(this.authenticationSuccessHandler);
 			authenticationFilter.setAuthenticationFailureHandler(new ServerAuthenticationFailureHandler() {
 				@Override
 				public Mono<Void> onAuthenticationFailure(WebFilterExchange webFilterExchange,
@@ -749,11 +865,7 @@ public class ServerHttpSecurity {
 		}
 
 		private ServerWebExchangeMatcher createAttemptAuthenticationRequestMatcher() {
-			PathPatternParserServerWebExchangeMatcher loginPathMatcher = new PathPatternParserServerWebExchangeMatcher("/login/oauth2/code/{registrationId}");
-			ServerWebExchangeMatcher notAuthenticatedMatcher = e  -> ReactiveSecurityContextHolder.getContext()
-					.flatMap(p -> ServerWebExchangeMatcher.MatchResult.notMatch())
-					.switchIfEmpty(ServerWebExchangeMatcher.MatchResult.match());
-			return new AndServerWebExchangeMatcher(loginPathMatcher, notAuthenticatedMatcher);
+			return new PathPatternParserServerWebExchangeMatcher("/login/oauth2/code/{registrationId}");
 		}
 
 		private ReactiveOAuth2UserService<OidcUserRequest, OidcUser> getOidcUserService() {
@@ -786,6 +898,15 @@ public class ServerHttpSecurity {
 				result.put("/oauth2/authorization/" + r.getRegistrationId(), r.getClientName());
 			});
 			return result;
+		}
+
+		private ReactiveOAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> getAccessTokenResponseClient() {
+			ResolvableType type = ResolvableType.forClassWithGenerics(ReactiveOAuth2AccessTokenResponseClient.class, OAuth2AuthorizationCodeGrantRequest.class);
+			ReactiveOAuth2AccessTokenResponseClient<OAuth2AuthorizationCodeGrantRequest> bean = getBeanOrNull(type);
+			if (bean == null) {
+				return new WebClientReactiveAuthorizationCodeTokenResponseClient();
+			}
+			return bean;
 		}
 
 		private ReactiveClientRegistrationRepository getClientRegistrationRepository() {
@@ -1001,6 +1122,7 @@ public class ServerHttpSecurity {
 
 		private JwtSpec jwt;
 		private OpaqueTokenSpec opaqueToken;
+		private ReactiveAuthenticationManagerResolver<ServerHttpRequest> authenticationManagerResolver;
 
 		/**
 		 * Configures the {@link ServerAccessDeniedHandler} to use for requests authenticating with
@@ -1045,6 +1167,20 @@ public class ServerHttpSecurity {
 			return this;
 		}
 
+		/**
+		 * Configures the {@link ReactiveAuthenticationManagerResolver}
+		 *
+		 * @param authenticationManagerResolver the {@link ReactiveAuthenticationManagerResolver}
+		 * @return the {@link OAuth2ResourceServerSpec} for additional configuration
+		 * @since 5.2
+		 */
+		public OAuth2ResourceServerSpec authenticationManagerResolver(
+				ReactiveAuthenticationManagerResolver<ServerHttpRequest> authenticationManagerResolver) {
+			Assert.notNull(authenticationManagerResolver, "authenticationManagerResolver cannot be null");
+			this.authenticationManagerResolver = authenticationManagerResolver;
+			return this;
+		}
+
 		public JwtSpec jwt() {
 			if (this.jwt == null) {
 				this.jwt = new JwtSpec();
@@ -1072,18 +1208,21 @@ public class ServerHttpSecurity {
 						"same time");
 			}
 
-			if (this.jwt == null && this.opaqueToken == null) {
+			if (this.jwt == null && this.opaqueToken == null && this.authenticationManagerResolver == null) {
 				throw new IllegalStateException("Jwt and Opaque Token are the only supported formats for bearer tokens " +
 						"in Spring Security and neither was found. Make sure to configure JWT " +
 						"via http.oauth2ResourceServer().jwt() or Opaque Tokens via " +
 						"http.oauth2ResourceServer().opaqueToken().");
 			}
 
-			if (this.jwt != null) {
+			if (this.authenticationManagerResolver != null) {
+				AuthenticationWebFilter oauth2 = new AuthenticationWebFilter(this.authenticationManagerResolver);
+				oauth2.setServerAuthenticationConverter(bearerTokenConverter);
+				oauth2.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(entryPoint));
+				http.addFilterAt(oauth2, SecurityWebFiltersOrder.AUTHENTICATION);
+			} else if (this.jwt != null) {
 				this.jwt.configure(http);
-			}
-
-			if (this.opaqueToken != null) {
+			} else if (this.opaqueToken != null) {
 				this.opaqueToken.configure(http);
 			}
 		}
@@ -1259,8 +1398,9 @@ public class ServerHttpSecurity {
 		 */
 		public class OpaqueTokenSpec {
 			private String introspectionUri;
-			private String introspectionClientId;
-			private String introspectionClientSecret;
+			private String clientId;
+			private String clientSecret;
+			private Supplier<ReactiveOAuth2TokenIntrospectionClient> introspectionClient;
 
 			/**
 			 * Configures the URI of the Introspection endpoint
@@ -1270,6 +1410,9 @@ public class ServerHttpSecurity {
 			public OpaqueTokenSpec introspectionUri(String introspectionUri) {
 				Assert.hasText(introspectionUri, "introspectionUri cannot be empty");
 				this.introspectionUri = introspectionUri;
+				this.introspectionClient = () ->
+						new NimbusReactiveOAuth2TokenIntrospectionClient(
+								this.introspectionUri, this.clientId, this.clientSecret);
 				return this;
 			}
 
@@ -1282,8 +1425,17 @@ public class ServerHttpSecurity {
 			public OpaqueTokenSpec introspectionClientCredentials(String clientId, String clientSecret) {
 				Assert.hasText(clientId, "clientId cannot be empty");
 				Assert.notNull(clientSecret, "clientSecret cannot be null");
-				this.introspectionClientId = clientId;
-				this.introspectionClientSecret = clientSecret;
+				this.clientId = clientId;
+				this.clientSecret = clientSecret;
+				this.introspectionClient = () ->
+						new NimbusReactiveOAuth2TokenIntrospectionClient(
+								this.introspectionUri, this.clientId, this.clientSecret);
+				return this;
+			}
+
+			public OpaqueTokenSpec introspectionClient(ReactiveOAuth2TokenIntrospectionClient introspectionClient) {
+				Assert.notNull(introspectionClient, "introspectionClient cannot be null");
+				this.introspectionClient = () -> introspectionClient;
 				return this;
 			}
 
@@ -1296,8 +1448,14 @@ public class ServerHttpSecurity {
 			}
 
 			protected ReactiveAuthenticationManager getAuthenticationManager() {
-				return new OAuth2IntrospectionReactiveAuthenticationManager(
-						this.introspectionUri, this.introspectionClientId, this.introspectionClientSecret);
+				return new OAuth2IntrospectionReactiveAuthenticationManager(getIntrospectionClient());
+			}
+
+			protected ReactiveOAuth2TokenIntrospectionClient getIntrospectionClient() {
+				if (this.introspectionClient != null) {
+					return this.introspectionClient.get();
+				}
+				return getBean(ReactiveOAuth2TokenIntrospectionClient.class);
 			}
 
 			protected void configure(ServerHttpSecurity http) {
@@ -1307,6 +1465,8 @@ public class ServerHttpSecurity {
 				oauth2.setAuthenticationFailureHandler(new ServerAuthenticationEntryPointFailureHandler(entryPoint));
 				http.addFilterAt(oauth2, SecurityWebFiltersOrder.AUTHENTICATION);
 			}
+
+			private OpaqueTokenSpec() {}
 		}
 
 		public ServerHttpSecurity and() {
@@ -1497,6 +1657,9 @@ public class ServerHttpSecurity {
 		if (this.httpsRedirectSpec != null) {
 			this.httpsRedirectSpec.configure(this);
 		}
+		if (this.x509 != null) {
+			this.x509.configure(this);
+		}
 		if (this.csrf != null) {
 			this.csrf.configure(this);
 		}
@@ -1504,11 +1667,15 @@ public class ServerHttpSecurity {
 			this.cors.configure(this);
 		}
 		if (this.httpBasic != null) {
-			this.httpBasic.authenticationManager(this.authenticationManager);
+			if (this.httpBasic.authenticationManager == null) {
+				this.httpBasic.authenticationManager(this.authenticationManager);
+			}
 			this.httpBasic.configure(this);
 		}
 		if (this.formLogin != null) {
-			this.formLogin.authenticationManager(this.authenticationManager);
+			if (this.formLogin.authenticationManager == null) {
+				this.formLogin.authenticationManager(this.authenticationManager);
+			}
 			if (this.securityContextRepository != null) {
 				this.formLogin.securityContextRepository(this.securityContextRepository);
 			}

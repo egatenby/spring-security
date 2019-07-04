@@ -12,7 +12,7 @@ Each Spring module is slightly different than another in terms of team size, num
 
 # Importing into IDE
 
-The following provides information on setting up a development environment that can run the sample in [Spring Tool Suite 3.6.0+](http://www.springsource.org/sts). Other IDE's should work using Gradle's IDE support, but have not been tested.
+The following provides information on setting up a development environment that can run the sample in [Spring Tool Suite 3.6.0+](https://www.springsource.org/sts). Other IDE's should work using Gradle's IDE support, but have not been tested.
 
 * IDE Setup
   * Install Spring Tool Suite 3.6.0+
@@ -25,13 +25,25 @@ The following provides information on setting up a development environment that 
 As of new versions of Spring Tool Suite, you might need to install Groovy Eclipse pointing directly to the updates plugin location. To install Groovy Eclipse on Spring Tool Suite based on Eclipse Oxigen you must do the following steps:
 
 Help->Install New Software...->Add the following URL into _Work with_ field:
-http://dist.springsource.org/snapshot/GRECLIPSE/e4.7/
+https://dist.springsource.org/snapshot/GRECLIPSE/e4.7/
 
 # Understand the basics 
 Not sure what a pull request is, or how to submit one? Take a look at GitHub's excellent [help documentation first](https://help.github.com/articles/using-pull-requests).
 
 # Search GitHub issues; create an issue if necessary
 Is there already an issue that addresses your concern? Do a bit of searching in our [GitHub issues ](https://github.com/spring-projects/spring-security/issues) to see if you can find something similar. If not, please create a new issue before submitting a pull request unless the change is not a user facing issue.
+
+# Using GitHub Issues
+We use GitHub issues to track bugs and enhancements.
+If you have a general usage question please ask on [Stack Overflow](https://stackoverflow.com).
+The Spring Security team and the broader community monitor the [`spring-security`](https://stackoverflow.com/tags/spring-security) tag.
+
+If you are reporting a bug, please help to speed up problem diagnosis by providing as much
+information as possible. Ideally, that would include a small
+[sample project](https://github.com/spring-projects/spring-boot-issues) that reproduces the
+problem.
+
+
 
 # Discuss non-trivial contribution ideas with committers
 If you're considering anything more than correcting a typo or fixing a minor bug, please discuss it on the [Spring Security Gitter](https://gitter.im/spring-projects/spring-security) before submitting a pull request. We're happy to provide guidance but please spend an hour or two researching the subject on your own including searching the forums for prior discussions.
@@ -64,8 +76,8 @@ Please carefully follow the whitespace and formatting conventions already presen
 
 Whitespace management tips
 
-1. You can use the [AnyEdit Eclipse plugin](http://marketplace.eclipse.org/content/anyedit-tools) to ensure spaces are used and to clean up trailing whitespaces.
-1. Use git's pre-commit.sample hook to prevent invalid whitespace from being pushed out. You can enable it by moving ~/spring-security/.git/hooks/pre-commit.sample to ~/spring-security/.git/hooks/pre-commit and ensuring it is executable. For more information on hooks refer to [Pro Git's Pre-Commit Hook's section](http://git-scm.com/book/cs/ch7-3.html)
+1. You can use the [AnyEdit Eclipse plugin](https://marketplace.eclipse.org/content/anyedit-tools) to ensure spaces are used and to clean up trailing whitespaces.
+1. Use git's pre-commit.sample hook to prevent invalid whitespace from being pushed out. You can enable it by moving ~/spring-security/.git/hooks/pre-commit.sample to ~/spring-security/.git/hooks/pre-commit and ensuring it is executable. For more information on hooks refer to [Pro Git's Pre-Commit Hook's section](https://git-scm.com/book/cs/ch7-3.html)
 
 # Add Apache license header to all new classes
 
@@ -77,7 +89,7 @@ Whitespace management tips
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -116,7 +128,7 @@ Search the codebase to find related unit tests and add additional `@Test` method
 2. New test methods should not start with test. This is an old JUnit3 convention and is not necessary since the method is annotated with @Test.
 
 # Update spring-security-x.y.rnc for schema changes
-Update the [RELAX NG](http://www.relaxng.org) schema `spring-security-x.y.rnc` instead of `spring-security-x.y.xsd` if you contribute changes to supported XML configuration. The XML schema file can be generated the following Gradle task:
+Update the [RELAX NG](https://relaxng.org/) schema `spring-security-x.y.rnc` instead of `spring-security-x.y.xsd` if you contribute changes to supported XML configuration. The XML schema file can be generated the following Gradle task:
 
 <pre>
 ./gradlew spring-security-config:rncToXsd

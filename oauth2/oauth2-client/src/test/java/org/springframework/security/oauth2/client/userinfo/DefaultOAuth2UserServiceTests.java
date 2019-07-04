@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -103,7 +103,7 @@ public class DefaultOAuth2UserServiceTests {
 		this.exception.expectMessage(containsString("missing_user_name_attribute"));
 
 		ClientRegistration clientRegistration = this.clientRegistrationBuilder
-				.userInfoUri("http://provider.com/user").build();
+				.userInfoUri("https://provider.com/user").build();
 		this.userService.loadUser(new OAuth2UserRequest(clientRegistration, this.accessToken));
 	}
 
@@ -235,7 +235,7 @@ public class DefaultOAuth2UserServiceTests {
 		this.exception.expect(OAuth2AuthenticationException.class);
 		this.exception.expectMessage(containsString("[invalid_user_info_response] An error occurred while attempting to retrieve the UserInfo Resource"));
 
-		String userInfoUri = "http://invalid-provider.com/user";
+		String userInfoUri = "https://invalid-provider.com/user";
 
 		ClientRegistration clientRegistration = this.clientRegistrationBuilder
 				.userInfoUri(userInfoUri)

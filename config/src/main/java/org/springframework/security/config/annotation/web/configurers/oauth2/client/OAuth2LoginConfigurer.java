@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2LoginAuthenticationProvider;
 import org.springframework.security.oauth2.client.authentication.OAuth2LoginAuthenticationToken;
@@ -66,6 +65,7 @@ import org.springframework.security.web.util.matcher.AndRequestMatcher;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.NegatedRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
+import org.springframework.security.web.util.matcher.RequestHeaderRequestMatcher;
 import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.util.Assert;
 import org.springframework.util.ClassUtils;
@@ -431,9 +431,6 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 				this.loginProcessingUrl);
 		this.setAuthenticationFilter(authenticationFilter);
 		super.loginProcessingUrl(this.loginProcessingUrl);
-		RequestMatcher authenticationNullMatcher = request -> SecurityContextHolder.getContext().getAuthentication() == null;
-		authenticationFilter.setRequiresAuthenticationRequestMatcher(new AndRequestMatcher(createLoginProcessingUrlMatcher(this.loginProcessingUrl),
-				authenticationNullMatcher));
 
 		if (this.loginPage != null) {
 			// Set custom login page
@@ -623,8 +620,11 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 		RequestMatcher defaultLoginPageMatcher = new AndRequestMatcher(
 				new OrRequestMatcher(loginPageMatcher, faviconMatcher), defaultEntryPointMatcher);
 
+		RequestMatcher notXRequestedWith = new NegatedRequestMatcher(
+				new RequestHeaderRequestMatcher("X-Requested-With", "XMLHttpRequest"));
+
 		LinkedHashMap<RequestMatcher, AuthenticationEntryPoint> entryPoints = new LinkedHashMap<>();
-		entryPoints.put(new NegatedRequestMatcher(defaultLoginPageMatcher),
+		entryPoints.put(new AndRequestMatcher(notXRequestedWith, new NegatedRequestMatcher(defaultLoginPageMatcher)),
 				new LoginUrlAuthenticationEntryPoint(providerLoginPage));
 
 		DelegatingAuthenticationEntryPoint loginEntryPoint = new DelegatingAuthenticationEntryPoint(entryPoints);
@@ -640,7 +640,7 @@ public final class OAuth2LoginConfigurer<B extends HttpSecurityBuilder<B>> exten
 			OAuth2LoginAuthenticationToken authorizationCodeAuthentication =
 				(OAuth2LoginAuthenticationToken) authentication;
 
-			// Section 3.1.2.1 Authentication Request - http://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+			// Section 3.1.2.1 Authentication Request - https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 			// scope
 			// 		REQUIRED. OpenID Connect requests MUST contain the "openid" scope value.
 			if (authorizationCodeAuthentication.getAuthorizationExchange()

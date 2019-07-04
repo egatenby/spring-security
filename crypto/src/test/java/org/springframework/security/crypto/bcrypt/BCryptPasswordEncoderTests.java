@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -167,6 +167,37 @@ public class BCryptPasswordEncoderTests {
 	public void doesntMatchBogusEncodedValue() {
 		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 		assertThat(encoder.matches("password", "012345678901234567890123456789")).isFalse();
+	}
+
+	@Test
+	public void upgradeFromLowerStrength() {
+		BCryptPasswordEncoder weakEncoder = new BCryptPasswordEncoder(5);
+		BCryptPasswordEncoder strongEncoder = new BCryptPasswordEncoder(15);
+
+		String weakPassword = weakEncoder.encode("password");
+		String strongPassword = strongEncoder.encode("password");
+
+		assertThat(weakEncoder.upgradeEncoding(strongPassword)).isFalse();
+		assertThat(strongEncoder.upgradeEncoding(weakPassword)).isTrue();
+	}
+
+	/**
+	 * @see <a href="https://github.com/spring-projects/spring-security/pull/7042#issuecomment-506755496">https://github.com/spring-projects/spring-security/pull/7042#issuecomment-506755496</>
+	 */
+	@Test
+	public void upgradeFromNullOrEmpty() {
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		assertThat(encoder.upgradeEncoding(null)).isFalse();
+		assertThat(encoder.upgradeEncoding("")).isFalse();
+	}
+
+	/**
+	 * @see <a href="https://github.com/spring-projects/spring-security/pull/7042#issuecomment-506755496">https://github.com/spring-projects/spring-security/pull/7042#issuecomment-506755496</>
+	 */
+	@Test(expected = IllegalArgumentException.class)
+	public void upgradeFromNonBCrypt() {
+		BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+		encoder.upgradeEncoding("not-a-bcrypt-password");
 	}
 
 }

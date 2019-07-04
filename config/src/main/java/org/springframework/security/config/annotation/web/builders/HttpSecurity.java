@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.AbstractConfiguredSecurityBuilder;
 import org.springframework.security.config.annotation.ObjectPostProcessor;
 import org.springframework.security.config.annotation.SecurityBuilder;
@@ -204,17 +205,17 @@ public final class HttpSecurity extends
 	 * 				.authenticationUserDetailsService(
 	 * 						new AutoProvisioningUserDetailsService())
 	 * 				.attributeExchange(&quot;https://www.google.com/.*&quot;).attribute(&quot;email&quot;)
-	 * 				.type(&quot;http://axschema.org/contact/email&quot;).required(true).and()
-	 * 				.attribute(&quot;firstname&quot;).type(&quot;http://axschema.org/namePerson/first&quot;)
+	 * 				.type(&quot;https://axschema.org/contact/email&quot;).required(true).and()
+	 * 				.attribute(&quot;firstname&quot;).type(&quot;https://axschema.org/namePerson/first&quot;)
 	 * 				.required(true).and().attribute(&quot;lastname&quot;)
-	 * 				.type(&quot;http://axschema.org/namePerson/last&quot;).required(true).and().and()
+	 * 				.type(&quot;https://axschema.org/namePerson/last&quot;).required(true).and().and()
 	 * 				.attributeExchange(&quot;.*yahoo.com.*&quot;).attribute(&quot;email&quot;)
-	 * 				.type(&quot;http://schema.openid.net/contact/email&quot;).required(true).and()
-	 * 				.attribute(&quot;fullname&quot;).type(&quot;http://axschema.org/namePerson&quot;)
+	 * 				.type(&quot;https://schema.openid.net/contact/email&quot;).required(true).and()
+	 * 				.attribute(&quot;fullname&quot;).type(&quot;https://axschema.org/namePerson&quot;)
 	 * 				.required(true).and().and().attributeExchange(&quot;.*myopenid.com.*&quot;)
-	 * 				.attribute(&quot;email&quot;).type(&quot;http://schema.openid.net/contact/email&quot;)
+	 * 				.attribute(&quot;email&quot;).type(&quot;https://schema.openid.net/contact/email&quot;)
 	 * 				.required(true).and().attribute(&quot;fullname&quot;)
-	 * 				.type(&quot;http://schema.openid.net/namePerson&quot;).required(true);
+	 * 				.type(&quot;https://schema.openid.net/namePerson&quot;).required(true);
 	 * 	}
 	 * }
 	 *
@@ -464,7 +465,7 @@ public final class HttpSecurity extends
 	 * 	protected void configure(HttpSecurity http) throws Exception {
 	 * 		http.authorizeRequests().antMatchers(&quot;/**&quot;).hasRole(&quot;USER&quot;).and()
 	 * 		// Example jee() configuration
-	 * 				.jee().mappableRoles(&quot;ROLE_USER&quot;, &quot;ROLE_ADMIN&quot;);
+	 * 				.jee().mappableRoles(&quot;USER&quot;, &quot;ADMIN&quot;);
 	 * 	}
 	 * }
 	 * </pre>
@@ -906,7 +907,7 @@ public final class HttpSecurity extends
 	 *
 	 * The &quot;authentication flow&quot; is implemented using the <b>Authorization Code Grant</b>, as specified in the
 	 * <a target="_blank" href="https://tools.ietf.org/html/rfc6749#section-4.1">OAuth 2.0 Authorization Framework</a>
-	 * and <a target="_blank" href="http://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth">OpenID Connect Core 1.0</a>
+	 * and <a target="_blank" href="https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth">OpenID Connect Core 1.0</a>
 	 * specification.
 	 * <br>
 	 * <br>
@@ -982,7 +983,7 @@ public final class HttpSecurity extends
 	 *
 	 * @since 5.0
 	 * @see <a target="_blank" href="https://tools.ietf.org/html/rfc6749#section-4.1">Section 4.1 Authorization Code Grant</a>
-	 * @see <a target="_blank" href="http://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth">Section 3.1 Authorization Code Flow</a>
+	 * @see <a target="_blank" href="https://openid.net/specs/openid-connect-core-1_0.html#CodeFlowAuth">Section 3.1 Authorization Code Flow</a>
 	 * @see org.springframework.security.oauth2.client.registration.ClientRegistration
 	 * @see org.springframework.security.oauth2.client.registration.ClientRegistrationRepository
 	 * @return the {@link OAuth2LoginConfigurer} for further customizations
@@ -1030,7 +1031,7 @@ public final class HttpSecurity extends
 	 * requiring HTTPS for some requests is supported, but not recommended since an
 	 * application that allows for HTTP introduces many security vulnerabilities. For one
 	 * such example, read about <a
-	 * href="http://en.wikipedia.org/wiki/Firesheep">Firesheep</a>.
+	 * href="https://en.wikipedia.org/wiki/Firesheep">Firesheep</a>.
 	 *
 	 * <pre>
 	 * &#064;Configuration
@@ -1092,6 +1093,41 @@ public final class HttpSecurity extends
 	 */
 	public HttpBasicConfigurer<HttpSecurity> httpBasic() throws Exception {
 		return getOrApply(new HttpBasicConfigurer<>());
+	}
+
+	/**
+	 * Configures HTTP Basic authentication.
+	 *
+	 * <h2>Example Configuration</h2>
+	 *
+	 * The example below demonstrates how to configure HTTP Basic authentication for an
+	 * application. The default realm is "Realm", but can be
+	 * customized using {@link HttpBasicConfigurer#realmName(String)}.
+	 *
+	 * <pre>
+	 * &#064;Configuration
+	 * &#064;EnableWebSecurity
+	 * public class HttpBasicSecurityConfig extends WebSecurityConfigurerAdapter {
+	 *
+	 * 	&#064;Override
+	 * 	protected void configure(HttpSecurity http) throws Exception {
+	 * 		http
+	 * 			.authorizeRequests()
+	 * 				.antMatchers(&quot;/**&quot;).hasRole(&quot;USER&quot;)
+	 * 				.and()
+	 * 			.httpBasic(withDefaults());
+	 * 	}
+	 * }
+	 * </pre>
+	 *
+	 * @param httpBasicCustomizer the {@link Customizer} to provide more options for
+	 * the {@link HttpBasicConfigurer}
+	 * @return the {@link HttpSecurity} for further customizations
+	 * @throws Exception
+	 */
+	public HttpSecurity httpBasic(Customizer<HttpBasicConfigurer<HttpSecurity>> httpBasicCustomizer) throws Exception {
+		httpBasicCustomizer.customize(getOrApply(new HttpBasicConfigurer<>()));
+		return HttpSecurity.this;
 	}
 
 	public <C> void setSharedObject(Class<C> sharedType, C object) {

@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,12 @@ import java.util.Map;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.SpringSecurityCoreVersion;
+import org.springframework.security.core.Transient;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
+import org.springframework.security.oauth2.core.OAuth2TokenAttributes;
 import org.springframework.util.Assert;
 
-import static org.springframework.security.oauth2.server.resource.authentication.OAuth2IntrospectionClaimNames.SUBJECT;
+import static org.springframework.security.oauth2.server.resource.introspection.OAuth2IntrospectionClaimNames.SUBJECT;
 
 /**
  * An {@link org.springframework.security.core.Authentication} token that represents a successful authentication as
@@ -36,6 +38,7 @@ import static org.springframework.security.oauth2.server.resource.authentication
  * @author Josh Cummings
  * @since 5.2
  */
+@Transient
 public class OAuth2IntrospectionAuthenticationToken
 		extends AbstractOAuth2TokenAuthenticationToken<OAuth2AccessToken> {
 
@@ -51,7 +54,7 @@ public class OAuth2IntrospectionAuthenticationToken
 	 * @param authorities The authorities associated with the given token
 	 */
 	public OAuth2IntrospectionAuthenticationToken(OAuth2AccessToken token,
-			Map<String, Object> attributes, Collection<? extends GrantedAuthority> authorities) {
+			OAuth2TokenAttributes attributes, Collection<? extends GrantedAuthority> authorities) {
 
 		this(token, attributes, authorities, null);
 	}
@@ -63,14 +66,20 @@ public class OAuth2IntrospectionAuthenticationToken
 	 * @param authorities The authorities associated with the given token
 	 * @param name The name associated with this token
 	 */
-	public OAuth2IntrospectionAuthenticationToken(OAuth2AccessToken token,
-		Map<String, Object> attributes, Collection<? extends GrantedAuthority> authorities, String name) {
+	public OAuth2IntrospectionAuthenticationToken(OAuth2AccessToken token, OAuth2TokenAttributes attributes,
+		Collection<? extends GrantedAuthority> authorities, String name) {
 
 		super(token, attributes, token, authorities);
-		Assert.notEmpty(attributes, "attributes cannot be empty");
-		this.attributes = Collections.unmodifiableMap(new LinkedHashMap<>(attributes));
-		this.name = name == null ? (String) attributes.get(SUBJECT) : name;
+		this.attributes = attributes(attributes);
+		this.name = name == null ? (String) this.attributes.get(SUBJECT) : name;
 		setAuthenticated(true);
+	}
+
+	private static Map<String, Object> attributes(OAuth2TokenAttributes attributes) {
+		Assert.notNull(attributes, "attributes cannot be empty");
+		Map<String, Object> attr = attributes.getAttributes();
+		Assert.notEmpty(attr, "attributes cannot be empty");
+		return Collections.unmodifiableMap(new LinkedHashMap<>(attr));
 	}
 
 	/**

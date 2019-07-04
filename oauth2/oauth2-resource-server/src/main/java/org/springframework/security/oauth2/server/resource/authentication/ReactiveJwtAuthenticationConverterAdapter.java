@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,9 +30,9 @@ import org.springframework.util.Assert;
  * @since 5.1.1
  */
 public class ReactiveJwtAuthenticationConverterAdapter implements Converter<Jwt, Mono<AbstractAuthenticationToken>> {
-	private final JwtAuthenticationConverter delegate;
+	private final Converter<Jwt, AbstractAuthenticationToken> delegate;
 
-	public ReactiveJwtAuthenticationConverterAdapter(JwtAuthenticationConverter delegate) {
+	public ReactiveJwtAuthenticationConverterAdapter(Converter<Jwt, AbstractAuthenticationToken> delegate) {
 		Assert.notNull(delegate, "delegate cannot be null");
 		this.delegate = delegate;
 	}

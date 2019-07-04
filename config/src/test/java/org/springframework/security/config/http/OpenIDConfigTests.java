@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -119,7 +119,7 @@ public class OpenIDConfigTests {
 
 		OpenIDAuthenticationFilter openIDFilter = getFilter(OpenIDAuthenticationFilter.class);
 
-		String openIdEndpointUrl = "http://testopenid.com?openid.return_to=";
+		String openIdEndpointUrl = "https://testopenid.com?openid.return_to=";
 		Set<String> returnToUrlParameters = new HashSet<>();
 		returnToUrlParameters.add(AbstractRememberMeServices.DEFAULT_PARAMETER);
 		openIDFilter.setReturnToUrlParameters(returnToUrlParameters);
@@ -142,7 +142,7 @@ public class OpenIDConfigTests {
 				.andExpect(content().string(containsString(AbstractRememberMeServices.DEFAULT_PARAMETER)));
 
 		this.mvc.perform(get("/login/openid")
-				.param(OpenIDAuthenticationFilter.DEFAULT_CLAIMED_IDENTITY_FIELD, "http://hey.openid.com/")
+				.param(OpenIDAuthenticationFilter.DEFAULT_CLAIMED_IDENTITY_FIELD, "https://ww1.openid.com")
 				.param(AbstractRememberMeServices.DEFAULT_PARAMETER, "on"))
 				.andExpect(status().isFound())
 				.andExpect(redirectedUrl(openIdEndpointUrl + expectedReturnTo));

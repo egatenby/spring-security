@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,9 +32,9 @@ import javax.security.auth.callback.UnsupportedCallbackException;
  * @author Ray Krueger
  *
  * @see <a
- * href="http://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/Callback.html">Callback</a>
+ * href="https://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/Callback.html">Callback</a>
  * @see <a
- * href="http://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/PasswordCallback.html">
+ * href="https://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/PasswordCallback.html">
  * PasswordCallback</a>
  */
 public class JaasPasswordCallbackHandler implements JaasAuthenticationCallbackHandler {

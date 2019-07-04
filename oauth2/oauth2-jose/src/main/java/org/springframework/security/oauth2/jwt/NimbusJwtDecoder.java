@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -16,37 +16,55 @@
 
 package org.springframework.security.oauth2.jwt;
 
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.security.interfaces.RSAPublicKey;
 import java.text.ParseException;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import javax.crypto.SecretKey;
 
+import com.nimbusds.jose.JWSAlgorithm;
 import com.nimbusds.jose.RemoteKeySourceException;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.JWSKeySelector;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
 import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.util.Resource;
+import com.nimbusds.jose.util.ResourceRetriever;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.JWTParser;
-import com.nimbusds.jwt.SignedJWT;
+import com.nimbusds.jwt.PlainJWT;
+import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 import com.nimbusds.jwt.proc.JWTProcessor;
 
 import org.springframework.core.convert.converter.Converter;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.RequestEntity;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
+import org.springframework.security.oauth2.jose.jws.JwsAlgorithm;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.util.Assert;
+import org.springframework.web.client.RestOperations;
+import org.springframework.web.client.RestTemplate;
 
 /**
  * A low-level Nimbus implementation of {@link JwtDecoder} which takes a raw Nimbus configuration.
  *
- * It's simple to produce an instance of {@code JWTProcessor} using {@link JwtProcessors}:
- * <pre>
- * 	JWTProcessor&lt;SecurityContext&gt; jwtProcessor = JwtProcessors.fromJwkSetUri(uri).build();
- * 	NimbusJwtDecoder jwtDecoder = new NimbusJwtDecoder(jwtProcessor);
- * </pre>
- *
  * @author Josh Cummings
+ * @author Joe Grandja
  * @since 5.2
- * @see JwtProcessors
  */
 public final class NimbusJwtDecoder implements JwtDecoder {
 	private static final String DECODING_ERROR_MESSAGE_TEMPLATE =
@@ -98,11 +116,11 @@ public final class NimbusJwtDecoder implements JwtDecoder {
 	@Override
 	public Jwt decode(String token) throws JwtException {
 		JWT jwt = parse(token);
-		if (jwt instanceof SignedJWT) {
-			Jwt createdJwt = createJwt(token, jwt);
-			return validateJwt(createdJwt);
+		if (jwt instanceof PlainJWT) {
+			throw new JwtException("Unsupported algorithm of " + jwt.getHeader().getAlgorithm());
 		}
-		throw new JwtException("Unsupported algorithm of " + jwt.getHeader().getAlgorithm());
+		Jwt createdJwt = createJwt(token, jwt);
+		return validateJwt(createdJwt);
 	}
 
 	private JWT parse(String token) {
@@ -153,5 +171,247 @@ public final class NimbusJwtDecoder implements JwtDecoder {
 		}
 
 		return jwt;
+	}
+
+	/**
+	 * Use the given
+	 * <a href="https://tools.ietf.org/html/rfc7517#section-5">JWK Set</a> uri.
+	 *
+	 * @param jwkSetUri the JWK Set uri to use
+	 * @return a {@link JwkSetUriJwtDecoderBuilder} for further configurations
+	 */
+	public static JwkSetUriJwtDecoderBuilder withJwkSetUri(String jwkSetUri) {
+		return new JwkSetUriJwtDecoderBuilder(jwkSetUri);
+	}
+
+	/**
+	 * Use the given public key to validate JWTs
+	 *
+	 * @param key the public key to use
+	 * @return a {@link PublicKeyJwtDecoderBuilder} for further configurations
+	 */
+	public static PublicKeyJwtDecoderBuilder withPublicKey(RSAPublicKey key) {
+		return new PublicKeyJwtDecoderBuilder(key);
+	}
+
+	/**
+	 * Use the given {@code SecretKey} to validate the MAC on a JSON Web Signature (JWS).
+	 *
+	 * @param secretKey the {@code SecretKey} used to validate the MAC
+	 * @return a {@link SecretKeyJwtDecoderBuilder} for further configurations
+	 */
+	public static SecretKeyJwtDecoderBuilder withSecretKey(SecretKey secretKey) {
+		return new SecretKeyJwtDecoderBuilder(secretKey);
+	}
+
+	/**
+	 * A builder for creating {@link NimbusJwtDecoder} instances based on a
+	 * <a target="_blank" href="https://tools.ietf.org/html/rfc7517#section-5">JWK Set</a> uri.
+	 */
+	public static final class JwkSetUriJwtDecoderBuilder {
+		private String jwkSetUri;
+		private JWSAlgorithm jwsAlgorithm = JWSAlgorithm.RS256;
+		private RestOperations restOperations = new RestTemplate();
+
+		private JwkSetUriJwtDecoderBuilder(String jwkSetUri) {
+			Assert.hasText(jwkSetUri, "jwkSetUri cannot be empty");
+			this.jwkSetUri = jwkSetUri;
+		}
+
+		/**
+		 * Use the given signing
+		 * <a href="https://tools.ietf.org/html/rfc7515#section-4.1.1" target="_blank">algorithm</a>.
+		 *
+		 * @param jwsAlgorithm the algorithm to use
+		 * @return a {@link JwkSetUriJwtDecoderBuilder} for further configurations
+		 */
+		public JwkSetUriJwtDecoderBuilder jwsAlgorithm(JwsAlgorithm jwsAlgorithm) {
+			Assert.notNull(jwsAlgorithm, "jwsAlgorithm cannot be null");
+			this.jwsAlgorithm = JWSAlgorithm.parse(jwsAlgorithm.getName());
+			return this;
+		}
+
+		/**
+		 * Use the given {@link RestOperations} to coordinate with the authorization servers indicated in the
+		 * <a href="https://tools.ietf.org/html/rfc7517#section-5">JWK Set</a> uri
+		 * as well as the
+		 * <a href="https://openid.net/specs/openid-connect-core-1_0.html#IssuerIdentifier">Issuer</a>.
+		 *
+		 * @param restOperations
+		 * @return
+		 */
+		public JwkSetUriJwtDecoderBuilder restOperations(RestOperations restOperations) {
+			Assert.notNull(restOperations, "restOperations cannot be null");
+			this.restOperations = restOperations;
+			return this;
+		}
+
+		JWTProcessor<SecurityContext> processor() {
+			ResourceRetriever jwkSetRetriever = new RestOperationsResourceRetriever(this.restOperations);
+			JWKSource<SecurityContext> jwkSource = new RemoteJWKSet<>(toURL(this.jwkSetUri), jwkSetRetriever);
+			JWSKeySelector<SecurityContext> jwsKeySelector =
+					new JWSVerificationKeySelector<>(this.jwsAlgorithm, jwkSource);
+			ConfigurableJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+			jwtProcessor.setJWSKeySelector(jwsKeySelector);
+
+			// Spring Security validates the claim set independent from Nimbus
+			jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> { });
+
+			return jwtProcessor;
+		}
+
+		/**
+		 * Build the configured {@link NimbusJwtDecoder}.
+		 *
+		 * @return the configured {@link NimbusJwtDecoder}
+		 */
+		public NimbusJwtDecoder build() {
+			return new NimbusJwtDecoder(processor());
+		}
+
+		private static URL toURL(String url) {
+			try {
+				return new URL(url);
+			} catch (MalformedURLException ex) {
+				throw new IllegalArgumentException("Invalid JWK Set URL \"" + url + "\" : " + ex.getMessage(), ex);
+			}
+		}
+
+		private static class RestOperationsResourceRetriever implements ResourceRetriever {
+			private final RestOperations restOperations;
+
+			RestOperationsResourceRetriever(RestOperations restOperations) {
+				Assert.notNull(restOperations, "restOperations cannot be null");
+				this.restOperations = restOperations;
+			}
+
+			@Override
+			public Resource retrieveResource(URL url) throws IOException {
+				HttpHeaders headers = new HttpHeaders();
+				headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON_UTF8));
+
+				ResponseEntity<String> response;
+				try {
+					RequestEntity<Void> request = new RequestEntity<>(headers, HttpMethod.GET, url.toURI());
+					response = this.restOperations.exchange(request, String.class);
+				} catch (Exception ex) {
+					throw new IOException(ex);
+				}
+
+				if (response.getStatusCodeValue() != 200) {
+					throw new IOException(response.toString());
+				}
+
+				return new Resource(response.getBody(), "UTF-8");
+			}
+		}
+	}
+
+	/**
+	 * A builder for creating {@link NimbusJwtDecoder} instances based on a public key.
+	 */
+	public static final class PublicKeyJwtDecoderBuilder {
+		private JWSAlgorithm jwsAlgorithm;
+		private RSAPublicKey key;
+
+		private PublicKeyJwtDecoderBuilder(RSAPublicKey key) {
+			Assert.notNull(key, "key cannot be null");
+			this.jwsAlgorithm = JWSAlgorithm.RS256;
+			this.key = key;
+		}
+
+		/**
+		 * Use the given signing
+		 * <a href="https://tools.ietf.org/html/rfc7515#section-4.1.1" target="_blank">algorithm</a>.
+		 *
+		 * The value should be one of
+		 * <a href="https://tools.ietf.org/html/rfc7518#section-3.3" target="_blank">RS256, RS384, or RS512</a>.
+		 *
+		 * @param signatureAlgorithm the algorithm to use
+		 * @return a {@link PublicKeyJwtDecoderBuilder} for further configurations
+		 */
+		public PublicKeyJwtDecoderBuilder signatureAlgorithm(SignatureAlgorithm signatureAlgorithm) {
+			Assert.notNull(signatureAlgorithm, "signatureAlgorithm cannot be null");
+			this.jwsAlgorithm = JWSAlgorithm.parse(signatureAlgorithm.getName());
+			return this;
+		}
+
+		JWTProcessor<SecurityContext> processor() {
+			if (!JWSAlgorithm.Family.RSA.contains(this.jwsAlgorithm)) {
+				throw new IllegalStateException("The provided key is of type RSA; " +
+						"however the signature algorithm is of some other type: " +
+						this.jwsAlgorithm + ". Please indicate one of RS256, RS384, or RS512.");
+			}
+
+			JWSKeySelector<SecurityContext> jwsKeySelector =
+					new SingleKeyJWSKeySelector<>(this.jwsAlgorithm, this.key);
+			DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+			jwtProcessor.setJWSKeySelector(jwsKeySelector);
+
+			// Spring Security validates the claim set independent from Nimbus
+			jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> { });
+
+			return jwtProcessor;
+		}
+
+		/**
+		 * Build the configured {@link NimbusJwtDecoder}.
+		 *
+		 * @return the configured {@link NimbusJwtDecoder}
+		 */
+		public NimbusJwtDecoder build() {
+			return new NimbusJwtDecoder(processor());
+		}
+	}
+
+	/**
+	 * A builder for creating {@link NimbusJwtDecoder} instances based on a {@code SecretKey}.
+	 */
+	public static final class SecretKeyJwtDecoderBuilder {
+		private final SecretKey secretKey;
+		private JWSAlgorithm jwsAlgorithm = JWSAlgorithm.HS256;
+
+		private SecretKeyJwtDecoderBuilder(SecretKey secretKey) {
+			Assert.notNull(secretKey, "secretKey cannot be null");
+			this.secretKey = secretKey;
+		}
+
+		/**
+		 * Use the given
+		 * <a href="https://tools.ietf.org/html/rfc7515#section-4.1.1" target="_blank">algorithm</a>
+		 * when generating the MAC.
+		 *
+		 * The value should be one of
+		 * <a href="https://tools.ietf.org/html/rfc7518#section-3.2" target="_blank">HS256, HS384 or HS512</a>.
+		 *
+		 * @param macAlgorithm the MAC algorithm to use
+		 * @return a {@link SecretKeyJwtDecoderBuilder} for further configurations
+		 */
+		public SecretKeyJwtDecoderBuilder macAlgorithm(MacAlgorithm macAlgorithm) {
+			Assert.notNull(macAlgorithm, "macAlgorithm cannot be null");
+			this.jwsAlgorithm = JWSAlgorithm.parse(macAlgorithm.getName());
+			return this;
+		}
+
+		/**
+		 * Build the configured {@link NimbusJwtDecoder}.
+		 *
+		 * @return the configured {@link NimbusJwtDecoder}
+		 */
+		public NimbusJwtDecoder build() {
+			return new NimbusJwtDecoder(processor());
+		}
+
+		JWTProcessor<SecurityContext> processor() {
+			JWSKeySelector<SecurityContext> jwsKeySelector =
+					new SingleKeyJWSKeySelector<>(this.jwsAlgorithm, this.secretKey);
+			DefaultJWTProcessor<SecurityContext> jwtProcessor = new DefaultJWTProcessor<>();
+			jwtProcessor.setJWSKeySelector(jwsKeySelector);
+
+			// Spring Security validates the claim set independent from Nimbus
+			jwtProcessor.setJWTClaimsSetVerifier((claims, context) -> { });
+
+			return jwtProcessor;
+		}
 	}
 }

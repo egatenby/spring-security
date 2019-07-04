@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,6 +36,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 public class JwtAuthenticationToken extends AbstractOAuth2TokenAuthenticationToken<Jwt> {
 	private static final long serialVersionUID = SpringSecurityCoreVersion.SERIAL_VERSION_UID;
 
+	private final String name;
+
 	/**
 	 * Constructs a {@code JwtAuthenticationToken} using the provided parameters.
 	 *
@@ -43,6 +45,7 @@ public class JwtAuthenticationToken extends AbstractOAuth2TokenAuthenticationTok
 	 */
 	public JwtAuthenticationToken(Jwt jwt) {
 		super(jwt);
+		this.name = jwt.getSubject();
 	}
 
 	/**
@@ -54,6 +57,20 @@ public class JwtAuthenticationToken extends AbstractOAuth2TokenAuthenticationTok
 	public JwtAuthenticationToken(Jwt jwt, Collection<? extends GrantedAuthority> authorities) {
 		super(jwt, authorities);
 		this.setAuthenticated(true);
+		this.name = jwt.getSubject();
+	}
+
+	/**
+	 * Constructs a {@code JwtAuthenticationToken} using the provided parameters.
+	 *
+	 * @param jwt the JWT
+	 * @param authorities the authorities assigned to the JWT
+	 * @param name the principal name
+	 */
+	public JwtAuthenticationToken(Jwt jwt, Collection<? extends GrantedAuthority> authorities, String name) {
+		super(jwt, authorities);
+		this.setAuthenticated(true);
+		this.name = name;
 	}
 
 	/**
@@ -65,10 +82,10 @@ public class JwtAuthenticationToken extends AbstractOAuth2TokenAuthenticationTok
 	}
 
 	/**
-	 * The {@link Jwt}'s subject, if any
+	 * The principal name which is, by default, the {@link Jwt}'s subject
 	 */
 	@Override
 	public String getName() {
-		return this.getToken().getSubject();
+		return this.name;
 	}
 }

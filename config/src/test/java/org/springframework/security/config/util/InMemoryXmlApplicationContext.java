@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,11 +32,11 @@ public class InMemoryXmlApplicationContext extends AbstractXmlApplicationContext
 			+ "    xmlns:mvc='http://www.springframework.org/schema/mvc'\n"
 			+ "    xmlns:websocket='http://www.springframework.org/schema/websocket'\n"
 			+ "    xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'\n"
-			+ "    xsi:schemaLocation='http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd\n"
-			+ "http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.5.xsd\n"
-			+ "http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd\n"
-			+ "http://www.springframework.org/schema/websocket http://www.springframework.org/schema/websocket/spring-websocket.xsd\n"
-			+ "http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-2.5.xsd\n"
+			+ "    xsi:schemaLocation='http://www.springframework.org/schema/beans https://www.springframework.org/schema/beans/spring-beans-2.5.xsd\n"
+			+ "http://www.springframework.org/schema/aop https://www.springframework.org/schema/aop/spring-aop-2.5.xsd\n"
+			+ "http://www.springframework.org/schema/mvc https://www.springframework.org/schema/mvc/spring-mvc.xsd\n"
+			+ "http://www.springframework.org/schema/websocket https://www.springframework.org/schema/websocket/spring-websocket.xsd\n"
+			+ "http://www.springframework.org/schema/context https://www.springframework.org/schema/context/spring-context-2.5.xsd\n"
 			+ "http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-";
 	static final String BEANS_CLOSE = "</b:beans>\n";
 

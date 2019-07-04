@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -88,6 +88,20 @@ public class DefaultServerOAuth2AuthorizationRequestResolverTests {
 	private OAuth2AuthorizationRequest resolve(String path) {
 		ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get(path));
 		return this.resolver.resolve(exchange).block();
+	}
+
+	@Test
+	public void resolveWhenForwardedHeadersClientRegistrationFoundThenWorks() {
+		when(this.clientRegistrationRepository.findByRegistrationId(any())).thenReturn(
+				Mono.just(this.registration));
+		ServerWebExchange exchange = MockServerWebExchange.from(MockServerHttpRequest.get("/oauth2/authorization/id").header("X-Forwarded-Host", "evil.com"));
+
+		OAuth2AuthorizationRequest request = this.resolver.resolve(exchange).block();
+
+		assertThat(request.getAuthorizationRequestUri()).matches("https://example.com/login/oauth/authorize\\?" +
+				"response_type=code&client_id=client-id&" +
+				"scope=read:user&state=.*?&" +
+				"redirect_uri=/login/oauth2/code/registration-id");
 	}
 
 	@Test

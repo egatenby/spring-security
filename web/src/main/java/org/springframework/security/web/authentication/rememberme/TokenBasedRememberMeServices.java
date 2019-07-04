@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -256,15 +256,8 @@ public class TokenBasedRememberMeServices extends AbstractRememberMeServices {
 	private static boolean equals(String expected, String actual) {
 		byte[] expectedBytes = bytesUtf8(expected);
 		byte[] actualBytes = bytesUtf8(actual);
-		if (expectedBytes.length != actualBytes.length) {
-			return false;
-		}
 
-		int result = 0;
-		for (int i = 0; i < expectedBytes.length; i++) {
-			result |= expectedBytes[i] ^ actualBytes[i];
-		}
-		return result == 0;
+		return MessageDigest.isEqual(expectedBytes, actualBytes);
 	}
 
 	private static byte[] bytesUtf8(String s) {

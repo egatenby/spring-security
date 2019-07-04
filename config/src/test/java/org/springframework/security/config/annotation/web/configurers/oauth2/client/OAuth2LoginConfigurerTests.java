@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,6 +18,7 @@ package org.springframework.security.config.annotation.web.configurers.oauth2.cl
 import org.apache.http.HttpHeaders;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,23 +30,26 @@ import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.config.oauth2.client.CommonOAuth2Provider;
+import org.springframework.security.config.test.SpringTestRule;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.AuthorityUtils;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.authority.mapping.GrantedAuthoritiesMapper;
-import org.springframework.security.core.context.SecurityContextImpl;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AccessTokenResponseClient;
 import org.springframework.security.oauth2.client.endpoint.OAuth2AuthorizationCodeGrantRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.client.registration.TestClientRegistrations;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
@@ -61,6 +65,7 @@ import org.springframework.security.oauth2.core.oidc.endpoint.OidcParameterNames
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
+import org.springframework.security.oauth2.core.oidc.user.TestOidcUsers;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2UserAuthority;
@@ -71,6 +76,7 @@ import org.springframework.security.web.FilterChainProxy;
 import org.springframework.security.web.context.HttpRequestResponseHolder;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
+import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 
 import java.time.Instant;
@@ -86,6 +92,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 
 /**
  * Tests for {@link OAuth2LoginConfigurer}.
@@ -114,6 +124,12 @@ public class OAuth2LoginConfigurerTests {
 
 	@Autowired
 	SecurityContextRepository securityContextRepository;
+
+	@Rule
+	public final SpringTestRule spring = new SpringTestRule();
+
+	@Autowired(required = false)
+	MockMvc mvc;
 
 	private MockHttpServletRequest request;
 	private MockHttpServletResponse response;
@@ -182,31 +198,6 @@ public class OAuth2LoginConfigurerTests {
 		assertThat(OAuth2LoginConfig.EVENTS).isNotEmpty();
 		assertThat(OAuth2LoginConfig.EVENTS).hasSize(1);
 		assertThat(OAuth2LoginConfig.EVENTS.get(0)).isInstanceOf(AuthenticationSuccessEvent.class);
-	}
-
-	@Test
-	public void oauth2LoginWhenAuthenticatedThenIgnored() throws Exception {
-		// setup application context
-		loadConfig(OAuth2LoginConfig.class);
-
-		// authenticate
-		TestingAuthenticationToken expectedAuthentication = new TestingAuthenticationToken("a",
-				"b", "ROLE_TEST");
-
-		this.request.getSession().setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, new SecurityContextImpl(expectedAuthentication));
-
-		// setup authentication parameters
-		this.request.setParameter("code", "code123");
-		this.request.setParameter("state", "state");
-
-		// perform test
-		this.springSecurityFilterChain.doFilter(this.request, this.response, this.filterChain);
-
-		// assertions
-		Authentication authentication = this.securityContextRepository
-				.loadContext(new HttpRequestResponseHolder(this.request, this.response))
-				.getAuthentication();
-		assertThat(authentication).isEqualTo(expectedAuthentication);
 	}
 
 	@Test
@@ -355,6 +346,21 @@ public class OAuth2LoginConfigurerTests {
 		assertThat(this.response.getRedirectedUrl()).matches("http://localhost/login");
 	}
 
+	// gh-6812
+	@Test
+	public void oauth2LoginWithOneClientConfiguredAndRequestXHRNotAuthenticatedThenDoesNotRedirectForAuthorization() throws Exception {
+		loadConfig(OAuth2LoginConfig.class);
+
+		String requestUri = "/";
+		this.request = new MockHttpServletRequest("GET", requestUri);
+		this.request.setServletPath(requestUri);
+		this.request.addHeader("X-Requested-With", "XMLHttpRequest");
+
+		this.springSecurityFilterChain.doFilter(this.request, this.response, this.filterChain);
+
+		assertThat(this.response.getRedirectedUrl()).doesNotMatch("http://localhost/oauth2/authorization/google");
+	}
+
 	@Test
 	public void oauth2LoginWithCustomLoginPageThenRedirectCustomLoginPage() throws Exception {
 		loadConfig(OAuth2LoginConfigCustomLoginPage.class);
@@ -453,6 +459,21 @@ public class OAuth2LoginConfigurerTests {
 				.hasMessageContaining("No qualifying bean of type " +
 						"'org.springframework.security.oauth2.jwt.JwtDecoderFactory<org.springframework.security.oauth2.client.registration.ClientRegistration>' " +
 						"available: expected single matching bean but found 2: jwtDecoderFactory1,jwtDecoderFactory2");
+	}
+
+	@Test
+	public void logoutWhenUsingOidcLogoutHandlerThenRedirects() throws Exception {
+		this.spring.register(OAuth2LoginConfigWithOidcLogoutSuccessHandler.class).autowire();
+
+		OAuth2AuthenticationToken token = new OAuth2AuthenticationToken(
+				TestOidcUsers.create(),
+				AuthorityUtils.NO_AUTHORITIES,
+				"registration-id");
+
+		this.mvc.perform(post("/logout")
+				.with(authentication(token))
+				.with(csrf()))
+				.andExpect(redirectedUrl("https://logout?id_token_hint=id-token"));
 	}
 
 	private void loadConfig(Class<?>... configs) {
@@ -588,6 +609,31 @@ public class OAuth2LoginConfigurerTests {
 							new InMemoryClientRegistrationRepository(GOOGLE_CLIENT_REGISTRATION))
 					.loginPage("/custom-login");
 			super.configure(http);
+		}
+	}
+
+	@EnableWebSecurity
+	static class OAuth2LoginConfigWithOidcLogoutSuccessHandler extends CommonWebSecurityConfigurerAdapter {
+		@Override
+		protected void configure(HttpSecurity http) throws Exception {
+			http
+				.logout()
+					.logoutSuccessHandler(oidcLogoutSuccessHandler());
+			super.configure(http);
+		}
+
+		@Bean
+		OidcClientInitiatedLogoutSuccessHandler oidcLogoutSuccessHandler() {
+			return new OidcClientInitiatedLogoutSuccessHandler(clientRegistrationRepository());
+		}
+
+		@Bean
+		ClientRegistrationRepository clientRegistrationRepository() {
+			Map<String, Object> providerMetadata =
+					Collections.singletonMap("end_session_endpoint", "https://logout");
+			return new InMemoryClientRegistrationRepository(
+					TestClientRegistrations.clientRegistration()
+							.providerConfigurationMetadata(providerMetadata).build());
 		}
 	}
 

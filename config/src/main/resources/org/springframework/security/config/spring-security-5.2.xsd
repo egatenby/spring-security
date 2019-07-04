@@ -1284,20 +1284,6 @@
             </xs:restriction>
          </xs:simpleType>
       </xs:attribute>
-      <xs:attribute name="filters">
-         <xs:annotation>
-            <xs:documentation>The filter list for the path. Currently can be set to "none" to remove a path from having
-                any filters applied. The full filter stack (consisting of all filters created by the
-                namespace configuration, and any added using 'custom-filter'), will be applied to any
-                other paths.
-                </xs:documentation>
-         </xs:annotation>
-         <xs:simpleType>
-            <xs:restriction base="xs:token">
-               <xs:enumeration value="none"/>
-            </xs:restriction>
-         </xs:simpleType>
-      </xs:attribute>
       <xs:attribute name="requires-channel" type="xs:token">
          <xs:annotation>
             <xs:documentation>Used to specify that a URL must be accessed over http or https, or that there is no
@@ -1494,7 +1480,7 @@
       </xs:attribute>
       <xs:attribute name="type" use="required" type="xs:token">
          <xs:annotation>
-            <xs:documentation>Specifies the attribute type. For example, http://axschema.org/contact/email. See your
+            <xs:documentation>Specifies the attribute type. For example, https://axschema.org/contact/email. See your
                 OP's documentation for valid attribute types.
                 </xs:documentation>
          </xs:annotation>
@@ -2261,13 +2247,13 @@
       </xs:complexType>
    </xs:element>
   <xs:attributeGroup name="headers-options.attlist">
-      <xs:attribute name="defaults-disabled" type="xs:boolean">
+      <xs:attribute name="defaults-disabled" type="xs:token">
          <xs:annotation>
             <xs:documentation>Specifies if the default headers should be disabled. Default false.
                 </xs:documentation>
          </xs:annotation>
       </xs:attribute>
-      <xs:attribute name="disabled" type="xs:boolean">
+      <xs:attribute name="disabled" type="xs:token">
          <xs:annotation>
             <xs:documentation>Specifies if headers should be disabled. Default false.
                 </xs:documentation>

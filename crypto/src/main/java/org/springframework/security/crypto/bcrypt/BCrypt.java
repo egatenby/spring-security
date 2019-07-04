@@ -14,6 +14,8 @@
 package org.springframework.security.crypto.bcrypt;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Arrays;
 import java.security.SecureRandom;
 
@@ -600,7 +602,7 @@ public class BCrypt {
 	/**
 	 * Perform the "enhanced key schedule" step described by
 	 * Provos and Mazieres in "A Future-Adaptable Password Scheme"
-	 * http://www.openbsd.org/papers/bcrypt-paper.ps
+	 * https://www.openbsd.org/papers/bcrypt-paper.ps
 	 * @param data	salt information
 	 * @param key	password information
 	 * @param sign_ext_bug	true to implement the 2x bug
@@ -780,6 +782,10 @@ public class BCrypt {
 		// Extract number of rounds
 		if (salt.charAt(off + 2) > '$')
 			throw new IllegalArgumentException ("Missing salt rounds");
+
+		if (off == 4 && saltLength < 29) {
+			throw new IllegalArgumentException("Invalid salt");
+		}
 		rounds = Integer.parseInt(salt.substring(off, off + 2));
 
 		real_salt = salt.substring(off + 3, off + 25);
@@ -908,17 +914,6 @@ public class BCrypt {
 	}
 
 	static boolean equalsNoEarlyReturn(String a, String b) {
-		char[] caa = a.toCharArray();
-		char[] cab = b.toCharArray();
-
-		if (caa.length != cab.length) {
-			return false;
-		}
-
-		byte ret = 0;
-		for (int i = 0; i < caa.length; i++) {
-			ret |= caa[i] ^ cab[i];
-		}
-		return ret == 0;
+		return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
 	}
 }

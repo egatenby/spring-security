@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -148,25 +148,25 @@ public class HpkpHeaderWriterTests {
 	@Test
 	public void writeHeadersTerminateConnectionWithURI() throws URISyntaxException {
 		writer.setReportOnly(false);
-		writer.setReportUri(new URI("http://example.com/pkp-report"));
+		writer.setReportUri(new URI("https://example.com/pkp-report"));
 
 		writer.writeHeaders(request, response);
 
 		assertThat(response.getHeaderNames()).hasSize(1);
 		assertThat(response.getHeader("Public-Key-Pins")).isEqualTo(
-				"max-age=5184000 ; pin-sha256=\"d6qzRu9zOECb90Uez27xWltNsj0e1Md7GkYYkVoZWmM=\" ; report-uri=\"http://example.com/pkp-report\"");
+				"max-age=5184000 ; pin-sha256=\"d6qzRu9zOECb90Uez27xWltNsj0e1Md7GkYYkVoZWmM=\" ; report-uri=\"https://example.com/pkp-report\"");
 	}
 
 	@Test
 	public void writeHeadersTerminateConnectionWithURIAsString() throws URISyntaxException {
 		writer.setReportOnly(false);
-		writer.setReportUri("http://example.com/pkp-report");
+		writer.setReportUri("https://example.com/pkp-report");
 
 		writer.writeHeaders(request, response);
 
 		assertThat(response.getHeaderNames()).hasSize(1);
 		assertThat(response.getHeader("Public-Key-Pins")).isEqualTo(
-				"max-age=5184000 ; pin-sha256=\"d6qzRu9zOECb90Uez27xWltNsj0e1Md7GkYYkVoZWmM=\" ; report-uri=\"http://example.com/pkp-report\"");
+				"max-age=5184000 ; pin-sha256=\"d6qzRu9zOECb90Uez27xWltNsj0e1Md7GkYYkVoZWmM=\" ; report-uri=\"https://example.com/pkp-report\"");
 	}
 
 	@Test

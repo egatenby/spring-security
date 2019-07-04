@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -252,7 +252,7 @@ public abstract class AbstractSecurityWebApplicationInitializer
 	 *
 	 * <p>
 	 * Note that {@link SessionTrackingMode#URL} is intentionally omitted to help
-	 * protected against <a href="http://en.wikipedia.org/wiki/Session_fixation">session
+	 * protected against <a href="https://en.wikipedia.org/wiki/Session_fixation">session
 	 * fixation attacks</a>. {@link SessionTrackingMode#SSL} is omitted because SSL
 	 * configuration is required for this to work.
 	 * </p>

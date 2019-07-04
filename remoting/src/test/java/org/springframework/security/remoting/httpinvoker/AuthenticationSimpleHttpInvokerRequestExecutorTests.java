@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -57,11 +57,11 @@ public class AuthenticationSimpleHttpInvokerRequestExecutorTests {
 		// Create a connection and ensure our executor sets its
 		// properties correctly
 		AuthenticationSimpleHttpInvokerRequestExecutor executor = new AuthenticationSimpleHttpInvokerRequestExecutor();
-		HttpURLConnection conn = new MockHttpURLConnection(new URL("http://localhost/"));
+		HttpURLConnection conn = new MockHttpURLConnection(new URL("https://localhost/"));
 		executor.prepareConnection(conn, 10);
 
 		// Check connection properties
-		// See http://www.faqs.org/rfcs/rfc1945.html section 11.1 for example
+		// See https://tools.ietf.org/html/rfc1945 section 11.1 for example
 		// we are comparing against
 		assertThat(conn.getRequestProperty("Authorization")).isEqualTo(
 				"Basic QWxhZGRpbjpvcGVuIHNlc2FtZQ==");
@@ -74,7 +74,7 @@ public class AuthenticationSimpleHttpInvokerRequestExecutorTests {
 		// Create a connection and ensure our executor sets its
 		// properties correctly
 		AuthenticationSimpleHttpInvokerRequestExecutor executor = new AuthenticationSimpleHttpInvokerRequestExecutor();
-		HttpURLConnection conn = new MockHttpURLConnection(new URL("http://localhost/"));
+		HttpURLConnection conn = new MockHttpURLConnection(new URL("https://localhost/"));
 		executor.prepareConnection(conn, 10);
 
 		// Check connection properties (shouldn't be an Authorization header)
@@ -91,7 +91,7 @@ public class AuthenticationSimpleHttpInvokerRequestExecutorTests {
 		// Create a connection and ensure our executor sets its
 		// properties correctly
 		AuthenticationSimpleHttpInvokerRequestExecutor executor = new AuthenticationSimpleHttpInvokerRequestExecutor();
-		HttpURLConnection conn = new MockHttpURLConnection(new URL("http://localhost/"));
+		HttpURLConnection conn = new MockHttpURLConnection(new URL("https://localhost/"));
 		executor.prepareConnection(conn, 10);
 
 		// Check connection properties (shouldn't be an Authorization header)

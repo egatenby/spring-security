@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,7 @@
 package org.springframework.security.web.server.transport;
 
 import java.net.URI;
+import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 
@@ -101,8 +102,10 @@ public final class HttpsRedirectWebFilter implements WebFilter {
 				UriComponentsBuilder.fromUri(exchange.getRequest().getURI());
 
 		if (port > 0) {
-			port = this.portMapper.lookupHttpsPort(port);
-			builder.port(port);
+			Optional.ofNullable(this.portMapper.lookupHttpsPort(port))
+					.map(builder::port)
+					.orElseThrow(() -> new IllegalStateException(
+							"HTTP Port '" + port + "' does not have a corresponding HTTPS Port"));
 		}
 
 		return builder.scheme("https").build().toUri();

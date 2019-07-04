@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -129,7 +129,7 @@ public final class LogoutConfigurer<H extends HttpSecurityBuilder<H>> extends
 	 * <p>
 	 * It is considered best practice to use an HTTP POST on any action that changes state
 	 * (i.e. log out) to protect against <a
-	 * href="http://en.wikipedia.org/wiki/Cross-site_request_forgery">CSRF attacks</a>. If
+	 * href="https://en.wikipedia.org/wiki/Cross-site_request_forgery">CSRF attacks</a>. If
 	 * you really want to use an HTTP GET, you can use
 	 * <code>logoutRequestMatcher(new AntPathRequestMatcher(logoutUrl, "GET"));</code>
 	 * </p>

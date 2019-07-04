@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
 import java.time.Instant;
 import java.util.Base64;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -45,17 +44,19 @@ import reactor.core.publisher.Mono;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.NoUniqueBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
 import org.springframework.security.authentication.ReactiveAuthenticationManager;
+import org.springframework.security.authentication.ReactiveAuthenticationManagerResolver;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.test.SpringTestRule;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
@@ -175,6 +176,16 @@ public class OAuth2ResourceServerSpecTests {
 	}
 
 	@Test
+	public void getWhenValidUsingPlaceholderThenReturnsOk() {
+		this.spring.register(PlaceholderConfig.class, RootController.class).autowire();
+
+		this.client.get()
+				.headers(headers -> headers.setBearerAuth(this.messageReadToken))
+				.exchange()
+				.expectStatus().isOk();
+	}
+
+	@Test
 	public void getWhenCustomDecoderThenAuthenticatesAccordingly() {
 		this.spring.register(CustomDecoderConfig.class, RootController.class).autowire();
 
@@ -211,6 +222,28 @@ public class OAuth2ResourceServerSpecTests {
 				ReactiveAuthenticationManager.class);
 		when(authenticationManager.authenticate(any(Authentication.class)))
 				.thenReturn(Mono.error(new OAuth2AuthenticationException(new OAuth2Error("mock-failure"))));
+
+		this.client.get()
+				.headers(headers -> headers.setBearerAuth(this.messageReadToken))
+				.exchange()
+				.expectStatus().isUnauthorized()
+				.expectHeader().value(HttpHeaders.WWW_AUTHENTICATE, startsWith("Bearer error=\"mock-failure\""));
+	}
+
+	@Test
+	public void getWhenUsingCustomAuthenticationManagerResolverThenUsesItAccordingly() {
+		this.spring.register(CustomAuthenticationManagerResolverConfig.class).autowire();
+
+		ReactiveAuthenticationManagerResolver<ServerHttpRequest> authenticationManagerResolver =
+				this.spring.getContext().getBean(ReactiveAuthenticationManagerResolver.class);
+
+		ReactiveAuthenticationManager authenticationManager =
+				this.spring.getContext().getBean(ReactiveAuthenticationManager.class);
+
+		when(authenticationManagerResolver.resolve(any(ServerHttpRequest.class)))
+			.thenReturn(Mono.just(authenticationManager));
+		when(authenticationManager.authenticate(any(Authentication.class)))
+			.thenReturn(Mono.error(new OAuth2AuthenticationException(new OAuth2Error("mock-failure"))));
 
 		this.client.get()
 				.headers(headers -> headers.setBearerAuth(this.messageReadToken))
@@ -385,6 +418,29 @@ public class OAuth2ResourceServerSpecTests {
 
 	@EnableWebFlux
 	@EnableWebFluxSecurity
+	static class PlaceholderConfig {
+		@Value("${classpath:org/springframework/security/config/web/server/OAuth2ResourceServerSpecTests-simple.pub}")
+		RSAPublicKey key;
+
+		@Bean
+		SecurityWebFilterChain springSecurity(ServerHttpSecurity http) throws Exception {
+			// @formatter:off
+			http
+				.authorizeExchange()
+					.anyExchange().hasAuthority("SCOPE_message:read")
+					.and()
+				.oauth2ResourceServer()
+					.jwt()
+						.publicKey(this.key);
+			// @formatter:on
+
+
+			return http.build();
+		}
+	}
+
+	@EnableWebFlux
+	@EnableWebFluxSecurity
 	static class JwkSetUriConfig {
 		private MockWebServer mockWebServer = new MockWebServer();
 
@@ -477,6 +533,34 @@ public class OAuth2ResourceServerSpecTests {
 
 	@EnableWebFlux
 	@EnableWebFluxSecurity
+	static class CustomAuthenticationManagerResolverConfig {
+		@Bean
+		SecurityWebFilterChain springSecurity(ServerHttpSecurity http) throws Exception {
+			// @formatter:off
+			http
+				.authorizeExchange()
+					.pathMatchers("/**/message/**").hasAnyAuthority("SCOPE_message:read")
+					.and()
+				.oauth2ResourceServer()
+					.authenticationManagerResolver(authenticationManagerResolver());
+			// @formatter:on
+
+			return http.build();
+		}
+
+		@Bean
+		ReactiveAuthenticationManagerResolver<ServerHttpRequest> authenticationManagerResolver() {
+			return mock(ReactiveAuthenticationManagerResolver.class);
+		}
+
+		@Bean
+		ReactiveAuthenticationManager authenticationManager() {
+			return mock(ReactiveAuthenticationManager.class);
+		}
+	}
+
+	@EnableWebFlux
+	@EnableWebFluxSecurity
 	static class CustomBearerTokenServerAuthenticationConverter {
 		@Bean
 		SecurityWebFilterChain springSecurity(ServerHttpSecurity http) throws Exception {
@@ -522,13 +606,12 @@ public class OAuth2ResourceServerSpecTests {
 
 		@Bean
 		Converter<Jwt, Mono<AbstractAuthenticationToken>> jwtAuthenticationConverter() {
-			JwtAuthenticationConverter converter = new JwtAuthenticationConverter() {
-				@Override
-				protected Collection<GrantedAuthority> extractAuthorities(Jwt jwt) {
+
+			JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+			converter.setJwtGrantedAuthoritiesConverter(jwt -> {
 					String[] claims = ((String) jwt.getClaims().get("scope")).split(" ");
 					return Stream.of(claims).map(SimpleGrantedAuthority::new).collect(Collectors.toList());
-				}
-			};
+				});
 
 			return new ReactiveJwtAuthenticationConverterAdapter(converter);
 		}

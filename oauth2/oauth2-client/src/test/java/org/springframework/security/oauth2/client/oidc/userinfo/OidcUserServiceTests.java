@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,14 +15,6 @@
  */
 package org.springframework.security.oauth2.client.oidc.userinfo;
 
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.TimeUnit;
-
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import okhttp3.mockwebserver.RecordedRequest;
@@ -31,7 +23,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-
+import org.springframework.core.convert.converter.Converter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -40,6 +32,7 @@ import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserServ
 import org.springframework.security.oauth2.core.AuthenticationMethod;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.converter.ClaimTypeConverter;
 import org.springframework.security.oauth2.core.oidc.IdTokenClaimNames;
 import org.springframework.security.oauth2.core.oidc.OidcIdToken;
 import org.springframework.security.oauth2.core.oidc.OidcScopes;
@@ -47,9 +40,18 @@ import org.springframework.security.oauth2.core.oidc.StandardClaimNames;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 
+import java.time.Instant;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.hamcrest.CoreMatchers.containsString;
+import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.oauth2.client.registration.TestClientRegistrations.clientRegistration;
 import static org.springframework.security.oauth2.core.TestOAuth2AccessTokens.scopes;
 
@@ -93,9 +95,34 @@ public class OidcUserServiceTests {
 	}
 
 	@Test
+	public void createDefaultClaimTypeConvertersWhenCalledThenDefaultsAreCorrect() {
+		Map<String, Converter<Object, ?>> claimTypeConverters = OidcUserService.createDefaultClaimTypeConverters();
+		assertThat(claimTypeConverters).containsKey(StandardClaimNames.EMAIL_VERIFIED);
+		assertThat(claimTypeConverters).containsKey(StandardClaimNames.PHONE_NUMBER_VERIFIED);
+		assertThat(claimTypeConverters).containsKey(StandardClaimNames.UPDATED_AT);
+	}
+
+	@Test
 	public void setOauth2UserServiceWhenNullThenThrowIllegalArgumentException() {
 		assertThatThrownBy(() -> this.userService.setOauth2UserService(null))
 				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	public void setClaimTypeConverterFactoryWhenNullThenThrowIllegalArgumentException() {
+		assertThatThrownBy(() -> this.userService.setClaimTypeConverterFactory(null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	public void setAccessibleScopesWhenNullThenThrowIllegalArgumentException() {
+		assertThatThrownBy(() -> this.userService.setAccessibleScopes(null))
+				.isInstanceOf(IllegalArgumentException.class);
+	}
+
+	@Test
+	public void setAccessibleScopesWhenEmptyThenSet() {
+		this.userService.setAccessibleScopes(Collections.emptySet());
 	}
 
 	@Test
@@ -112,18 +139,89 @@ public class OidcUserServiceTests {
 	}
 
 	@Test
-	public void loadUserWhenAuthorizedScopesDoesNotContainUserInfoScopesThenUserInfoEndpointNotRequested() {
+	public void loadUserWhenNonStandardScopesAuthorizedThenUserInfoEndpointNotRequested() {
 		ClientRegistration clientRegistration = this.clientRegistrationBuilder
-				.userInfoUri("http://provider.com/user").build();
-
-		Set<String> authorizedScopes = new LinkedHashSet<>(Arrays.asList("scope1", "scope2"));
-		OAuth2AccessToken accessToken = new OAuth2AccessToken(
-				OAuth2AccessToken.TokenType.BEARER, "access-token",
-				Instant.MIN, Instant.MAX, authorizedScopes);
+				.userInfoUri("https://provider.com/user").build();
+		this.accessToken = scopes("scope1", "scope2");
 
 		OidcUser user = this.userService.loadUser(
-			new OidcUserRequest(clientRegistration, accessToken, this.idToken));
+			new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
 		assertThat(user.getUserInfo()).isNull();
+	}
+
+	// gh-6886
+	@Test
+	public void loadUserWhenNonStandardScopesAuthorizedAndAccessibleScopesMatchThenUserInfoEndpointRequested() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
+
+		this.accessToken = scopes("scope1", "scope2");
+		this.userService.setAccessibleScopes(Collections.singleton("scope2"));
+
+		OidcUser user = this.userService.loadUser(
+				new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+		assertThat(user.getUserInfo()).isNotNull();
+	}
+
+	// gh-6886
+	@Test
+	public void loadUserWhenNonStandardScopesAuthorizedAndAccessibleScopesEmptyThenUserInfoEndpointRequested() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
+
+		this.accessToken = scopes("scope1", "scope2");
+		this.userService.setAccessibleScopes(Collections.emptySet());
+
+		OidcUser user = this.userService.loadUser(
+				new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+		assertThat(user.getUserInfo()).isNotNull();
+	}
+
+	// gh-6886
+	@Test
+	public void loadUserWhenStandardScopesAuthorizedThenUserInfoEndpointRequested() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri).build();
+
+		OidcUser user = this.userService.loadUser(
+				new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+		assertThat(user.getUserInfo()).isNotNull();
 	}
 
 	@Test
@@ -248,7 +346,7 @@ public class OidcUserServiceTests {
 		this.exception.expect(OAuth2AuthenticationException.class);
 		this.exception.expectMessage(containsString("[invalid_user_info_response] An error occurred while attempting to retrieve the UserInfo Resource"));
 
-		String userInfoUri = "http://invalid-provider.com/user";
+		String userInfoUri = "https://invalid-provider.com/user";
 
 		ClientRegistration clientRegistration = this.clientRegistrationBuilder
 				.userInfoUri(userInfoUri).build();
@@ -353,6 +451,35 @@ public class OidcUserServiceTests {
 		assertThat(request.getHeader(HttpHeaders.ACCEPT)).isEqualTo(MediaType.APPLICATION_JSON_VALUE);
 		assertThat(request.getHeader(HttpHeaders.CONTENT_TYPE)).contains(MediaType.APPLICATION_FORM_URLENCODED_VALUE);
 		assertThat(request.getBody().readUtf8()).isEqualTo("access_token=" + this.accessToken.getTokenValue());
+	}
+
+	@Test
+	public void loadUserWhenCustomClaimTypeConverterFactorySetThenApplied() {
+		String userInfoResponse = "{\n" +
+				"	\"sub\": \"subject1\",\n" +
+				"   \"name\": \"first last\",\n" +
+				"   \"given_name\": \"first\",\n" +
+				"   \"family_name\": \"last\",\n" +
+				"   \"preferred_username\": \"user1\",\n" +
+				"   \"email\": \"user1@example.com\"\n" +
+				"}\n";
+		this.server.enqueue(jsonResponse(userInfoResponse));
+
+		String userInfoUri = this.server.url("/user").toString();
+
+		ClientRegistration clientRegistration = this.clientRegistrationBuilder
+				.userInfoUri(userInfoUri)
+				.build();
+
+		Function<ClientRegistration, Converter<Map<String, Object>, Map<String, Object>>> customClaimTypeConverterFactory = mock(Function.class);
+		this.userService.setClaimTypeConverterFactory(customClaimTypeConverterFactory);
+
+		when(customClaimTypeConverterFactory.apply(same(clientRegistration)))
+				.thenReturn(new ClaimTypeConverter(OidcUserService.createDefaultClaimTypeConverters()));
+
+		this.userService.loadUser(new OidcUserRequest(clientRegistration, this.accessToken, this.idToken));
+
+		verify(customClaimTypeConverterFactory).apply(same(clientRegistration));
 	}
 
 	private MockResponse jsonResponse(String json) {

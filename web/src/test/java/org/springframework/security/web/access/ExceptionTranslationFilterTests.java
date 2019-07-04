@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -86,7 +86,7 @@ public class ExceptionTranslationFilterTests {
 		request.setServletPath("/secure/page.html");
 		request.setServerPort(80);
 		request.setScheme("http");
-		request.setServerName("www.example.com");
+		request.setServerName("localhost");
 		request.setContextPath("/mycontext");
 		request.setRequestURI("/mycontext/secure/page.html");
 
@@ -109,7 +109,7 @@ public class ExceptionTranslationFilterTests {
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		filter.doFilter(request, response, fc);
 		assertThat(response.getRedirectedUrl()).isEqualTo("/mycontext/login.jsp");
-		assertThat(getSavedRequestUrl(request)).isEqualTo("http://www.example.com/mycontext/secure/page.html");
+		assertThat(getSavedRequestUrl(request)).isEqualTo("http://localhost/mycontext/secure/page.html");
 	}
 
 	@Test
@@ -119,7 +119,7 @@ public class ExceptionTranslationFilterTests {
 		request.setServletPath("/secure/page.html");
 		request.setServerPort(80);
 		request.setScheme("http");
-		request.setServerName("www.example.com");
+		request.setServerName("localhost");
 		request.setContextPath("/mycontext");
 		request.setRequestURI("/mycontext/secure/page.html");
 
@@ -139,7 +139,7 @@ public class ExceptionTranslationFilterTests {
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		filter.doFilter(request, response, fc);
 		assertThat(response.getRedirectedUrl()).isEqualTo("/mycontext/login.jsp");
-		assertThat(getSavedRequestUrl(request)).isEqualTo("http://www.example.com/mycontext/secure/page.html");
+		assertThat(getSavedRequestUrl(request)).isEqualTo("http://localhost/mycontext/secure/page.html");
 	}
 
 
@@ -210,7 +210,7 @@ public class ExceptionTranslationFilterTests {
 		request.setServletPath("/secure/page.html");
 		request.setServerPort(80);
 		request.setScheme("http");
-		request.setServerName("www.example.com");
+		request.setServerName("localhost");
 		request.setContextPath("/mycontext");
 		request.setRequestURI("/mycontext/secure/page.html");
 
@@ -225,7 +225,7 @@ public class ExceptionTranslationFilterTests {
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		filter.doFilter(request, response, fc);
 		assertThat(response.getRedirectedUrl()).isEqualTo("/mycontext/login.jsp");
-		assertThat(getSavedRequestUrl(request)).isEqualTo("http://www.example.com/mycontext/secure/page.html");
+		assertThat(getSavedRequestUrl(request)).isEqualTo("http://localhost/mycontext/secure/page.html");
 	}
 
 	@Test
@@ -236,7 +236,7 @@ public class ExceptionTranslationFilterTests {
 		request.setServletPath("/secure/page.html");
 		request.setServerPort(8080);
 		request.setScheme("http");
-		request.setServerName("www.example.com");
+		request.setServerName("localhost");
 		request.setContextPath("/mycontext");
 		request.setRequestURI("/mycontext/secure/page.html");
 
@@ -254,7 +254,7 @@ public class ExceptionTranslationFilterTests {
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		filter.doFilter(request, response, fc);
 		assertThat(response.getRedirectedUrl()).isEqualTo("/mycontext/login.jsp");
-		assertThat(getSavedRequestUrl(request)).isEqualTo("http://www.example.com:8080/mycontext/secure/page.html");
+		assertThat(getSavedRequestUrl(request)).isEqualTo("http://localhost:8080/mycontext/secure/page.html");
 	}
 
 	@Test(expected = IllegalArgumentException.class)

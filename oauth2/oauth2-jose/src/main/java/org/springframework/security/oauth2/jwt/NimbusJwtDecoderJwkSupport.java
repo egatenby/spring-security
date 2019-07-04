@@ -1,11 +1,11 @@
 /*
- * Copyright 2002-2018 the original author or authors.
+ * Copyright 2002-2019 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,16 +15,17 @@
  */
 package org.springframework.security.oauth2.jwt;
 
-import java.util.Collections;
-import java.util.Map;
-
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.JwsAlgorithms;
+import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
 import org.springframework.util.Assert;
 import org.springframework.web.client.RestOperations;
 
-import static org.springframework.security.oauth2.jwt.JwtProcessors.withJwkSetUri;
+import java.util.Collections;
+import java.util.Map;
+
+import static org.springframework.security.oauth2.jwt.NimbusJwtDecoder.withJwkSetUri;
 
 /**
  * An implementation of a {@link JwtDecoder} that "decodes" a
@@ -49,7 +50,7 @@ import static org.springframework.security.oauth2.jwt.JwtProcessors.withJwkSetUr
  */
 @Deprecated
 public final class NimbusJwtDecoderJwkSupport implements JwtDecoder {
-	private JwtProcessors.JwkSetUriJwtProcessorBuilder jwtProcessorBuilder;
+	private NimbusJwtDecoder.JwkSetUriJwtDecoderBuilder jwtDecoderBuilder;
 	private OAuth2TokenValidator<Jwt> jwtValidator = JwtValidators.createDefault();
 	private Converter<Map<String, Object>, Map<String, Object>> claimSetConverter =
 			MappedJwtClaimSetConverter.withDefaults(Collections.emptyMap());
@@ -75,12 +76,12 @@ public final class NimbusJwtDecoderJwkSupport implements JwtDecoder {
 		Assert.hasText(jwkSetUrl, "jwkSetUrl cannot be empty");
 		Assert.hasText(jwsAlgorithm, "jwsAlgorithm cannot be empty");
 
-		this.jwtProcessorBuilder = withJwkSetUri(jwkSetUrl).jwsAlgorithm(jwsAlgorithm);
+		this.jwtDecoderBuilder = withJwkSetUri(jwkSetUrl).jwsAlgorithm(SignatureAlgorithm.from(jwsAlgorithm));
 		this.delegate = makeDelegate();
 	}
 
 	private NimbusJwtDecoder makeDelegate() {
-		NimbusJwtDecoder delegate = new NimbusJwtDecoder(this.jwtProcessorBuilder.build());
+		NimbusJwtDecoder delegate = this.jwtDecoderBuilder.build();
 		delegate.setClaimSetConverter(this.claimSetConverter);
 		delegate.setJwtValidator(this.jwtValidator);
 		return delegate;
@@ -121,7 +122,7 @@ public final class NimbusJwtDecoderJwkSupport implements JwtDecoder {
 	 */
 	public final void setRestOperations(RestOperations restOperations) {
 		Assert.notNull(restOperations, "restOperations cannot be null");
-		this.jwtProcessorBuilder = this.jwtProcessorBuilder.restOperations(restOperations);
+		this.jwtDecoderBuilder = this.jwtDecoderBuilder.restOperations(restOperations);
 		this.delegate = makeDelegate();
 	}
 }

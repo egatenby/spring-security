@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -85,7 +85,7 @@ public class OAuth2LoginAuthenticationProvider implements AuthenticationProvider
 		OAuth2LoginAuthenticationToken authorizationCodeAuthentication =
 			(OAuth2LoginAuthenticationToken) authentication;
 
-		// Section 3.1.2.1 Authentication Request - http://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
+		// Section 3.1.2.1 Authentication Request - https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest
 		// scope
 		// 		REQUIRED. OpenID Connect requests MUST contain the "openid" scope value.
 		if (authorizationCodeAuthentication.getAuthorizationExchange()

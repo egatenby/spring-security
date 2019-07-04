@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,8 +36,8 @@ import org.springframework.security.web.authentication.SavedRequestAwareAuthenti
 public class OpenIDAuthenticationFilterTests {
 
 	OpenIDAuthenticationFilter filter;
-	private static final String REDIRECT_URL = "http://www.example.com/redirect";
-	private static final String CLAIMED_IDENTITY_URL = "http://www.example.com/identity";
+	private static final String REDIRECT_URL = "https://www.example.com/redirect";
+	private static final String CLAIMED_IDENTITY_URL = "https://www.example.com/identity";
 	private static final String REQUEST_PATH = "/login/openid";
 	private static final String FILTER_PROCESS_URL = "http://localhost:8080"
 			+ REQUEST_PATH;
@@ -95,7 +95,7 @@ public class OpenIDAuthenticationFilterTests {
 	public void encodesUrlParameters() throws Exception {
 		// Arbitrary parameter name and value that will both need to be encoded:
 		String paramName = "foo&bar";
-		String paramValue = "http://example.com/path?a=b&c=d";
+		String paramValue = "https://example.com/path?a=b&c=d";
 		MockHttpServletRequest req = new MockHttpServletRequest("GET", REQUEST_PATH);
 		req.addParameter(paramName, paramValue);
 		filter.setReturnToUrlParameters(Collections.singleton(paramName));

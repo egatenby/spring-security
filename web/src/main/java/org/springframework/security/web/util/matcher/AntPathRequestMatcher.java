@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -220,11 +220,10 @@ public final class AntPathRequestMatcher
 
 	@Override
 	public int hashCode() {
-		int code = 31 ^ this.pattern.hashCode();
-		if (this.httpMethod != null) {
-			code ^= this.httpMethod.hashCode();
-		}
-		return code;
+		int result = this.pattern != null ? this.pattern.hashCode() : 0;
+		result = 31 * result + (this.httpMethod != null ? this.httpMethod.hashCode() : 0);
+		result = 31 * result + (this.caseSensitive ? 1231 : 1237);
+		return result;
 	}
 
 	@Override

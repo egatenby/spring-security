@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -141,8 +141,8 @@ public class AuthenticationManagerBuilder
 	 *
 	 * <p>
 	 * When using with a persistent data store, it is best to add users external of
-	 * configuration using something like <a href="http://flywaydb.org/">Flyway</a> or <a
-	 * href="http://www.liquibase.org/">Liquibase</a> to create the schema and adding
+	 * configuration using something like <a href="https://flywaydb.org/">Flyway</a> or <a
+	 * href="https://www.liquibase.org/">Liquibase</a> to create the schema and adding
 	 * users to ensure these steps are only done once and that the optimal SQL is used.
 	 * </p>
 	 *
@@ -151,7 +151,7 @@ public class AuthenticationManagerBuilder
 	 * {@link #getDefaultUserDetailsService()} method. Note that additional
 	 * {@link UserDetailsService}'s may override this {@link UserDetailsService} as the
 	 * default. See the <a href=
-	 * "http://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#user-schema"
+	 * "https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/#user-schema"
 	 * >User Schema</a> section of the reference for the default schema.
 	 * </p>
 	 *

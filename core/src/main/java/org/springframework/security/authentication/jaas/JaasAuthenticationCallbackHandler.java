@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,9 +41,9 @@ import javax.security.auth.callback.UnsupportedCallbackException;
  * @see JaasNameCallbackHandler
  * @see JaasPasswordCallbackHandler
  * @see <a
- * href="http://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/Callback.html">Callback</a>
+ * href="https://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/Callback.html">Callback</a>
  * @see <a
- * href="http://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/CallbackHandler.html">
+ * href="https://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/CallbackHandler.html">
  * CallbackHandler</a>
  */
 public interface JaasAuthenticationCallbackHandler {
@@ -52,7 +52,7 @@ public interface JaasAuthenticationCallbackHandler {
 
 	/**
 	 * Handle the <a href=
-	 * "http://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/Callback.html"
+	 * "https://java.sun.com/j2se/1.4.2/docs/api/javax/security/auth/callback/Callback.html"
 	 * >Callback</a>. The handle method will be called for every callback instance sent
 	 * from the LoginContext. Meaning that The handle method may be called multiple times
 	 * for a given JaasAuthenticationCallbackHandler.

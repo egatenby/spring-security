@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,7 +52,7 @@ import java.util.regex.Pattern;
  * conventions.
  * <p>
  * It will authenticate using the Active Directory <a
- * href="http://msdn.microsoft.com/en-us/library/ms680857%28VS.85%29.aspx">
+ * href="https://msdn.microsoft.com/en-us/library/ms680857%28VS.85%29.aspx">
  * {@code userPrincipalName}</a> or a custom {@link #setSearchFilter(String) searchFilter}
  * in the form {@code username@domain}. If the username does not already end with the
  * domain name, the {@code userPrincipalName} will be built by appending the configured

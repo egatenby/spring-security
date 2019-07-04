@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *      https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -170,7 +170,7 @@ public class OidcAuthorizationCodeAuthenticationProviderTests {
 		this.exception.expect(OAuth2AuthenticationException.class);
 		this.exception.expectMessage(containsString("invalid_redirect_uri_parameter"));
 
-		OAuth2AuthorizationResponse authorizationResponse = success().redirectUri("http://example2.com").build();
+		OAuth2AuthorizationResponse authorizationResponse = success().redirectUri("https://example2.com").build();
 		OAuth2AuthorizationExchange authorizationExchange =
 				new OAuth2AuthorizationExchange(this.authorizationRequest, authorizationResponse);
 
